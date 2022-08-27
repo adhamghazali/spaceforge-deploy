@@ -39,6 +39,14 @@ import transformers
 import base64
 from io import BytesIO
 
+from google_trans_new import google_translator  
+  
+translator = google_translator() 
+
+def translate(string):
+    
+    return translator.translate(string, lang_tgt='en')  
+
 
 class JPEGRenderer(renderers.BaseRenderer):
     media_type = 'image/jpeg'
@@ -63,6 +71,7 @@ class Prediction(APIView):
         variation=False
         #data = request.data
         prompt= request.GET.get('prompt')
+        prompt=translate(prompt)
         
         print(prompt)
         
@@ -73,7 +82,7 @@ class Prediction(APIView):
 
 
         num_inference_steps = 50            # Number of denoising steps
-        guidance_scale = 1                 # Scale for classifier-free guidance
+        guidance_scale = 10                 # Scale for classifier-free guidance
 
         generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
 
@@ -159,6 +168,8 @@ class Prediction(APIView):
         variation=False
         #data = request.data
         prompt= request.GET.get('prompt')
+        prompt=translate(prompt)
+
         
         print(prompt)
         
