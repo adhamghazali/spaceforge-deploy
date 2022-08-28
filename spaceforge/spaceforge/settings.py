@@ -39,16 +39,20 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+     'corsheaders',
+
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
 ]
 
 ROOT_URLCONF = 'spaceforge.urls'
@@ -56,7 +60,7 @@ ROOT_URLCONF = 'spaceforge.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['/home/adham/repo/spaceforge-deploy/spaceforge/monitor/templates'],
+        'DIRS': ['monitor/templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -131,3 +135,5 @@ MODELS ='../../../models/' #os.path.join(BASE_DIR, '../../../models')
 TEMPLATE_DIRS = (
     os.path.join('../monitor/', 'templates'),
 )
+
+CORS_ALLOW_ALL_ORIGINS: True

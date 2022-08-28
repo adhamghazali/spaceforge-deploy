@@ -39,13 +39,50 @@ import transformers
 import base64
 from io import BytesIO
 
-from google_trans_new import google_translator  
-  
-translator = google_translator() 
+import six
+from google.cloud import translate_v2 as translate
 
-def translate(string):
+translate_client = translate.Client()
+
+
+with open('../data/bad-words.txt') as f:
+    list_of_bad_words=f.read().splitlines()
     
-    return translator.translate(string, lang_tgt='en')  
+warning_image=Image.open('../data/warning.jpg')
+    
+    
+    
+
+
+def translate_text(target, text):
+    """Translates text into the target language.
+
+    Target must be an ISO 639-1 language code.
+    See https://g.co/cloud/translate/v2/translate-reference#supported_languages
+    """
+
+    if isinstance(text, six.binary_type):
+        text = text.decode("utf-8")
+    print(text)
+
+    # Text can also be a sequence of strings, in which case this method
+    # will return a sequence of results for each text.
+    result = translate_client.translate(text, target_language=target)
+
+    print(u"Text: {}".format(result["input"]))
+    print(u"Translation: {}".format(result["translatedText"]))
+    print(u"Detected source language: {}".format(result["detectedSourceLanguage"]))
+    return result
+
+
+
+
+def detect_bad_words(prompt,list_of_bad_words):
+    words=prompt.split(' ')
+    for word in words:
+        if word in list_of_bad_words:
+            return True
+    return False
 
 
 class JPEGRenderer(renderers.BaseRenderer):
@@ -68,12 +105,22 @@ class Prediction(APIView):
     
          
     def post(self, request):
+        print('this is a post request')
         variation=False
         #data = request.data
         prompt= request.GET.get('prompt')
-        prompt=translate(prompt)
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']   ##English 
         
-        print(prompt)
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            return Response(encoded_image,content_type="image/png")
+            
+        
         
         
         height = 512                        # default height
@@ -165,14 +212,27 @@ class Prediction(APIView):
     
     def get(self, request):
         
+        print('this is a get request')
         variation=False
         #data = request.data
         prompt= request.GET.get('prompt')
-        prompt=translate(prompt)
-
-        
         print(prompt)
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            image_data = base64.b64encode(byte_data).decode('utf-8')
+            ctx={'image':image_data}
+            
+            return  render(request, 'index.html',ctx)
         
+
+
+                
         
         height = 512                        # default height
         width = 512                         # default width 
