@@ -6,8 +6,7 @@ from .apps import *
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import renderers
-
-
+from ratelimit.decorators import ratelimit
 
 import torch
 from torch import autocast, nn
@@ -69,9 +68,7 @@ def translate_text(target, text):
     # will return a sequence of results for each text.
     result = translate_client.translate(text, target_language=target)
 
-    print(u"Text: {}".format(result["input"]))
-    print(u"Translation: {}".format(result["translatedText"]))
-    print(u"Detected source language: {}".format(result["detectedSourceLanguage"]))
+
     return result
 
 
@@ -100,12 +97,9 @@ def encode_image(frame):
     
     return cv2.imencode(".jpg", np.asarray(frame))[1]
 
-
-class Prediction(APIView):
+class P0(APIView):
     
-         
     def post(self, request):
-        print('this is a post request')
         variation=False
         #data = request.data
         prompt= request.GET.get('prompt')
@@ -128,34 +122,34 @@ class Prediction(APIView):
         batch_size = 1
 
 
-        num_inference_steps = 50            # Number of denoising steps
+        num_inference_steps = 200            # Number of denoising steps
         guidance_scale = 10                 # Scale for classifier-free guidance
 
         generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
 
         scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
 
-        text_input = ApiConfig.tokenizer(prompt, padding="max_length", max_length=ApiConfig.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+        text_input = A0.tokenizer(prompt, padding="max_length", max_length=A0.tokenizer.model_max_length, truncation=True, return_tensors="pt")
 
         with torch.no_grad():
-          text_embeddings = ApiConfig.text_encoder(text_input.input_ids.to(ApiConfig.torch_device0))[0]
+          text_embeddings = A0.text_encoder(text_input.input_ids.to(A0.torch_device0))[0]
 
         max_length = text_input.input_ids.shape[-1]
-        uncond_input = ApiConfig.tokenizer(
+        uncond_input = A0.tokenizer(
             [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
         )
         with torch.no_grad():
-          uncond_embeddings = ApiConfig.text_encoder(uncond_input.input_ids.to(ApiConfig.torch_device0))[0]
+          uncond_embeddings = A0.text_encoder(uncond_input.input_ids.to(A0.torch_device0))[0]
 
         text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
         
-        latents = torch.randn((batch_size, ApiConfig.unet.in_channels, height // 8, width // 8),
+        latents = torch.randn((batch_size, A0.unet.in_channels, height // 8, width // 8),
                               generator=generator,
                              )
            
                       
         
-        latents = latents.to(ApiConfig.torch_device0)
+        latents = latents.to(A0.torch_device0)
 
         scheduler.set_timesteps(num_inference_steps)
         latents = latents * scheduler.sigmas[0]
@@ -170,7 +164,7 @@ class Prediction(APIView):
 
             # predict the noise residual
             with torch.no_grad():
-              noise_pred = ApiConfig.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+                noise_pred = A0.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
 
             # perform guidance
             noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
@@ -182,7 +176,8 @@ class Prediction(APIView):
         latents = 1 / 0.18215 * latents
 
         with torch.no_grad():
-          image = ApiConfig.vae.decode(latents)
+          image = A0.vae.decode(latents)
+        
                         
                         
         image = (image / 2 + 0.5).clamp(0, 1)
@@ -192,7 +187,7 @@ class Prediction(APIView):
         images = (image * 255).round().astype("uint8")
         pil_images = [Image.fromarray(image) for image in images]
         
-        output, _ = ApiConfig.upsampler.enhance(img, outscale=4)
+        output, _ = A0.upsampler.enhance(img, outscale=4)
         out_image = Image.fromarray(output)
         
         
@@ -219,6 +214,7 @@ class Prediction(APIView):
         print(prompt)
         result=translate_text('EN',prompt)
         prompt=result['translatedText']
+        
         if detect_bad_words(prompt,list_of_bad_words):
             out_image = warning_image
             img_buffer = BytesIO()
@@ -239,34 +235,34 @@ class Prediction(APIView):
         batch_size = 1
 
 
-        num_inference_steps = 50            # Number of denoising steps
+        num_inference_steps = 200            # Number of denoising steps
         guidance_scale = 10                 # Scale for classifier-free guidance
 
         generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
 
         scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
 
-        text_input = ApiConfig.tokenizer(prompt, padding="max_length", max_length=ApiConfig.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+        text_input = A0.tokenizer(prompt, padding="max_length", max_length=A0.tokenizer.model_max_length, truncation=True, return_tensors="pt")
 
         with torch.no_grad():
-          text_embeddings = ApiConfig.text_encoder(text_input.input_ids.to(ApiConfig.torch_device0))[0]
+          text_embeddings = A0.text_encoder(text_input.input_ids.to(A0.torch_device0))[0]
 
         max_length = text_input.input_ids.shape[-1]
-        uncond_input = ApiConfig.tokenizer(
+        uncond_input = A0.tokenizer(
             [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
         )
         with torch.no_grad():
-          uncond_embeddings = ApiConfig.text_encoder(uncond_input.input_ids.to(ApiConfig.torch_device0))[0]
+          uncond_embeddings = A0.text_encoder(uncond_input.input_ids.to(A0.torch_device0))[0]
 
         text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
         
-        latents = torch.randn((batch_size, ApiConfig.unet.in_channels, height // 8, width // 8),
+        latents = torch.randn((batch_size, A0.unet.in_channels, height // 8, width // 8),
                               generator=generator,
                              )
            
                       
         
-        latents = latents.to(ApiConfig.torch_device0)
+        latents = latents.to(A0.torch_device0)
 
         scheduler.set_timesteps(num_inference_steps)
         latents = latents * scheduler.sigmas[0]
@@ -281,7 +277,7 @@ class Prediction(APIView):
 
             # predict the noise residual
             with torch.no_grad():
-              noise_pred = ApiConfig.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+              noise_pred = A0.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
 
             # perform guidance
             noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
@@ -293,7 +289,7 @@ class Prediction(APIView):
         latents = 1 / 0.18215 * latents
 
         with torch.no_grad():
-          image = ApiConfig.vae.decode(latents)
+          image = A0.vae.decode(latents)
                         
                         
         image = (image / 2 + 0.5).clamp(0, 1)
@@ -303,7 +299,7 @@ class Prediction(APIView):
         images = (image * 255).round().astype("uint8")
         pil_images = [Image.fromarray(image) for image in images]
         
-        output, _ = ApiConfig.upsampler.enhance(img, outscale=2)
+        output, _ = A0.upsampler.enhance(img, outscale=2)
         out_image = Image.fromarray(output)
         
         
@@ -320,11 +316,451 @@ class Prediction(APIView):
         
         #ctx["image"] = image_data
         
+        return  render(request, 'index.html',ctx)
+        
         
     
+    
+class P1(APIView):
+    
+    def post(self, request):
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']   ##English 
         
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            return Response(encoded_image,content_type="image/png")
             
         
+        
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A1.tokenizer(prompt, padding="max_length", max_length=A1.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A1.text_encoder(text_input.input_ids.to(A1.torch_device1))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A1.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A1.text_encoder(uncond_input.input_ids.to(A1.torch_device1))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A1.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A1.torch_device1)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+                noise_pred = A1.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A1.vae.decode(latents)
+        
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A1.upsampler.enhance(img, outscale=4)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='JPEG')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        #image_data = base64.b64encode(encoded_image).decode('utf-8')
+        
+        #renderer=JPEGRenderer()
+    
+        
+        
+        return Response(encoded_image,content_type="image/png")
+    
+    def get(self, request):
+        
+        print('this is a get request')
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        print(prompt)
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']
+        
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            image_data = base64.b64encode(byte_data).decode('utf-8')
+            ctx={'image':image_data}
+            
+            return  render(request, 'index.html',ctx)
+        
+
+
+                
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A1.tokenizer(prompt, padding="max_length", max_length=A1.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A1.text_encoder(text_input.input_ids.to(A1.torch_device1))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A1.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A1.text_encoder(uncond_input.input_ids.to(A1.torch_device1))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A1.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A1.torch_device1)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+              noise_pred = A1.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A1.vae.decode(latents)
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A1.upsampler.enhance(img, outscale=2)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='png')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        image_data = base64.b64encode(byte_data).decode('utf-8')
+        
+        
+        ctx={'image':image_data}
+        
+        #ctx["image"] = image_data
+        
+        return  render(request, 'index.html',ctx)
+    
+    
+class P2(APIView):
+    
+    def post(self, request):
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']   ##English 
+        
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            return Response(encoded_image,content_type="image/png")
+            
+        
+        
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A2.tokenizer(prompt, padding="max_length", max_length=A2.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A2.text_encoder(text_input.input_ids.to(A2.torch_device2))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A2.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A2.text_encoder(uncond_input.input_ids.to(A2.torch_device2))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A2.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A2.torch_device2)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+                noise_pred = A2.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A2.vae.decode(latents)
+        
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A2.upsampler.enhance(img, outscale=4)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='JPEG')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        #image_data = base64.b64encode(encoded_image).decode('utf-8')
+        
+        #renderer=JPEGRenderer()
+    
+        
+        
+        return Response(encoded_image,content_type="image/png")
+    
+    def get(self, request):
+        
+        print('this is a get request')
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        print(prompt)
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']
+        
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            image_data = base64.b64encode(byte_data).decode('utf-8')
+            ctx={'image':image_data}
+            
+            return  render(request, 'index.html',ctx)
+        
+
+
+                
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A2.tokenizer(prompt, padding="max_length", max_length=A2.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A2.text_encoder(text_input.input_ids.to(A2.torch_device2))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A2.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A2.text_encoder(uncond_input.input_ids.to(A2.torch_device2))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A2.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A2.torch_device2)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+              noise_pred = A2.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A2.vae.decode(latents)
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A2.upsampler.enhance(img, outscale=2)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='png')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        image_data = base64.b64encode(byte_data).decode('utf-8')
+        
+        
+        ctx={'image':image_data}
+        
+        #ctx["image"] = image_data
         
         return  render(request, 'index.html',ctx)
         
@@ -332,4 +768,450 @@ class Prediction(APIView):
     
     
     
+class P3(APIView):
     
+    def post(self, request):
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']   ##English 
+        
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            return Response(encoded_image,content_type="image/png")
+            
+        
+        
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A3.tokenizer(prompt, padding="max_length", max_length=A3.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A3.text_encoder(text_input.input_ids.to(A3.torch_device3))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A2.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A3.text_encoder(uncond_input.input_ids.to(A3.torch_device3))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A3.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A3.torch_device3)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+                noise_pred = A3.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A3.vae.decode(latents)
+        
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A3.upsampler.enhance(img, outscale=4)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='JPEG')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        #image_data = base64.b64encode(encoded_image).decode('utf-8')
+        
+        #renderer=JPEGRenderer()
+    
+        
+        
+        return Response(encoded_image,content_type="image/png")
+    
+    def get(self, request):
+        
+        print('this is a get request')
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        print(prompt)
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']
+        
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            image_data = base64.b64encode(byte_data).decode('utf-8')
+            ctx={'image':image_data}
+            
+            return  render(request, 'index.html',ctx)
+        
+
+
+                
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A3.tokenizer(prompt, padding="max_length", max_length=A3.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A3.text_encoder(text_input.input_ids.to(A3.torch_device3))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A3.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A3.text_encoder(uncond_input.input_ids.to(A3.torch_device3))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A2.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A3.torch_device3)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+              noise_pred = A3.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A3.vae.decode(latents)
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A3.upsampler.enhance(img, outscale=2)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='png')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        image_data = base64.b64encode(byte_data).decode('utf-8')
+        
+        
+        ctx={'image':image_data}
+        
+        #ctx["image"] = image_data
+        
+        return  render(request, 'index.html',ctx)
+        
+        
+    
+    
+    
+class P4(APIView):
+    
+    def post(self, request):
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']   ##English 
+        
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            return Response(encoded_image,content_type="image/png")
+            
+        
+        
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A4.tokenizer(prompt, padding="max_length", max_length=A4.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A4.text_encoder(text_input.input_ids.to(A4.torch_device4))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A4.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A4.text_encoder(uncond_input.input_ids.to(A4.torch_device4))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A4.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A4.torch_device4)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+                noise_pred = A4.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A4.vae.decode(latents)
+        
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A4.upsampler.enhance(img, outscale=4)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='JPEG')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        #image_data = base64.b64encode(encoded_image).decode('utf-8')
+        
+        #renderer=JPEGRenderer()
+    
+        
+        
+        return Response(encoded_image,content_type="image/png")
+    
+    def get(self, request):
+        
+        print('this is a get request')
+        variation=False
+        #data = request.data
+        prompt= request.GET.get('prompt')
+        print(prompt)
+        result=translate_text('EN',prompt)
+        prompt=result['translatedText']
+        
+        if detect_bad_words(prompt,list_of_bad_words):
+            out_image = warning_image
+            img_buffer = BytesIO()
+            out_image.save(img_buffer, format='png')
+            byte_data = img_buffer.getvalue()
+            encoded_image = base64.b64encode(byte_data)
+            image_data = base64.b64encode(byte_data).decode('utf-8')
+            ctx={'image':image_data}
+            
+            return  render(request, 'index.html',ctx)
+        
+
+
+                
+        
+        height = 512                        # default height
+        width = 512                         # default width 
+        batch_size = 1
+
+
+        num_inference_steps = 200            # Number of denoising steps
+        guidance_scale = 10                 # Scale for classifier-free guidance
+
+        generator = torch.manual_seed(random.randint(0,25000000))   # Seed generator to create the inital latent noise
+
+        scheduler = LMSDiscreteScheduler(beta_start=0.00085, beta_end=0.012, beta_schedule="scaled_linear", num_train_timesteps=1000)
+
+        text_input = A4.tokenizer(prompt, padding="max_length", max_length=A4.tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+        with torch.no_grad():
+          text_embeddings = A4.text_encoder(text_input.input_ids.to(A4.torch_device4))[0]
+
+        max_length = text_input.input_ids.shape[-1]
+        uncond_input = A4.tokenizer(
+            [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+          uncond_embeddings = A4.text_encoder(uncond_input.input_ids.to(A4.torch_device4))[0]
+
+        text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
+        
+        latents = torch.randn((batch_size, A4.unet.in_channels, height // 8, width // 8),
+                              generator=generator,
+                             )
+           
+                      
+        
+        latents = latents.to(A4.torch_device4)
+
+        scheduler.set_timesteps(num_inference_steps)
+        latents = latents * scheduler.sigmas[0]
+
+        with autocast("cuda"):
+
+          for i, t in tqdm(enumerate(scheduler.timesteps)):
+            # expand the latents if we are doing classifier-free guidance to avoid doing two forward passes.
+            latent_model_input = torch.cat([latents] * 2)
+            sigma = scheduler.sigmas[i]
+            latent_model_input = latent_model_input / ((sigma**2 + 1) ** 0.5)
+
+            # predict the noise residual
+            with torch.no_grad():
+              noise_pred = A4.unet(latent_model_input, t, encoder_hidden_states=text_embeddings)["sample"]
+
+            # perform guidance
+            noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
+            noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+            # compute the previous noisy sample x_t -> x_t-1
+            latents = scheduler.step(noise_pred, i, latents)["prev_sample"]
+
+        # scale and decode the image latents with vae
+        latents = 1 / 0.18215 * latents
+
+        with torch.no_grad():
+          image = A4.vae.decode(latents)
+                        
+                        
+        image = (image / 2 + 0.5).clamp(0, 1)
+        img=image.detach().cpu().permute(0, 2,3, 1).squeeze(0).numpy()*255
+        image = image.detach().cpu().permute(0, 2, 3, 1).numpy()
+
+        images = (image * 255).round().astype("uint8")
+        pil_images = [Image.fromarray(image) for image in images]
+        
+        output, _ = A4.upsampler.enhance(img, outscale=2)
+        out_image = Image.fromarray(output)
+        
+        
+        
+        img_buffer = BytesIO()
+        out_image.save(img_buffer, format='png')
+        byte_data = img_buffer.getvalue()
+        encoded_image = base64.b64encode(byte_data)
+        
+        image_data = base64.b64encode(byte_data).decode('utf-8')
+        
+        
+        ctx={'image':image_data}
+        
+        #ctx["image"] = image_data
+        
+        return  render(request, 'index.html',ctx)
+        
+        

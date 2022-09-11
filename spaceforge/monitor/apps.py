@@ -37,7 +37,7 @@ class MonitorConfig(AppConfig):
 
 
 
-class ApiConfig(AppConfig):
+class A0(AppConfig):
     name = 'api'
     #MODEL_FILE = os.path.join(settings.MODELS, "DecisionTreeModel.joblib")
     #model = joblib.load(MODEL_FILE)
@@ -45,16 +45,78 @@ class ApiConfig(AppConfig):
     torch_device1 = "cuda:1" if torch.cuda.is_available() else "cpu"
     torch_device2 = "cuda:2" if torch.cuda.is_available() else "cpu"
     torch_device3 = "cuda:3" if torch.cuda.is_available() else "cpu"
+    torch_device4="cpu"
+
     
     path='../../models/'
     vae = AutoencoderKL.from_pretrained(path+'spaceforge-diffusion/vae').to(torch_device0)
     text_encoder = CLIPTextModel.from_pretrained(path+"clip-vit-large-patch14/").to(torch_device0)
     unet = UNet2DConditionModel.from_pretrained(path+"spaceforge-diffusion/unet/").to(torch_device0)
     tokenizer = CLIPTokenizer.from_pretrained(path+"clip-vit-large-patch14/")
-    SRmodel = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32,scale=4).to(torch_device1)
+    SRmodel = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32,scale=4).to(torch_device3)
     gan_model_path=path+'gans/RealESRGAN_x4plus.pth'
     upsampler = RealESRGANer(scale=4,
                              model_path=gan_model_path,
                              model=SRmodel,
                              tile=0, tile_pad=10,pre_pad=0,
                              half=True)
+    
+    
+class A1(AppConfig):
+    
+    test='hello'
+    name = 'api'
+    #MODEL_FILE = os.path.join(settings.MODELS, "DecisionTreeModel.joblib")
+    #model = joblib.load(MODEL_FILE)
+    torch_device0 = "cuda:0" if torch.cuda.is_available() else "cpu"
+    torch_device1 = "cuda:1" if torch.cuda.is_available() else "cpu"
+    torch_device2 = "cuda:2" if torch.cuda.is_available() else "cpu"
+    torch_device3 = "cuda:3" if torch.cuda.is_available() else "cpu"
+    torch_device4="cpu"
+
+    
+    path='../../models/'
+    vae = AutoencoderKL.from_pretrained(path+'spaceforge-diffusion/vae').to(torch_device1)
+    text_encoder = CLIPTextModel.from_pretrained(path+"clip-vit-large-patch14/").to(torch_device1)
+    unet = UNet2DConditionModel.from_pretrained(path+"spaceforge-diffusion/unet/").to(torch_device1)
+    tokenizer = CLIPTokenizer.from_pretrained(path+"clip-vit-large-patch14/")
+    SRmodel = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32,scale=4).to(torch_device3)
+    gan_model_path=path+'gans/RealESRGAN_x4plus.pth'
+    upsampler = RealESRGANer(scale=4,
+                             model_path=gan_model_path,
+                             model=SRmodel,
+                             tile=0, tile_pad=10,pre_pad=0,
+                             half=True)
+
+    
+    
+class A2(AppConfig):
+    
+    test='hello'
+    name = 'api'
+    #MODEL_FILE = os.path.join(settings.MODELS, "DecisionTreeModel.joblib")
+    #model = joblib.load(MODEL_FILE)
+    torch_device0 = "cuda:0" if torch.cuda.is_available() else "cpu"
+    torch_device1 = "cuda:1" if torch.cuda.is_available() else "cpu"
+    torch_device2 = "cuda:2" if torch.cuda.is_available() else "cpu"
+    torch_device3 = "cuda:3" if torch.cuda.is_available() else "cpu"
+    torch_device4="cpu"
+
+    
+
+    
+    path='../../models/'
+    vae = AutoencoderKL.from_pretrained(path+'spaceforge-diffusion/vae').to(torch_device2)
+    text_encoder = CLIPTextModel.from_pretrained(path+"clip-vit-large-patch14/").to(torch_device2)
+    unet = UNet2DConditionModel.from_pretrained(path+"spaceforge-diffusion/unet/").to(torch_device2)
+    tokenizer = CLIPTokenizer.from_pretrained(path+"clip-vit-large-patch14/")
+    SRmodel = RRDBNet(num_in_ch=3, num_out_ch=3, num_feat=64, num_block=23, num_grow_ch=32,scale=4).to(torch_device3)
+    gan_model_path=path+'gans/RealESRGAN_x4plus.pth'
+    upsampler = RealESRGANer(scale=4,
+                             model_path=gan_model_path,
+                             model=SRmodel,
+                             tile=0, tile_pad=10,pre_pad=0,
+                             half=True)
+    
+    
+

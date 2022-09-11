@@ -26,7 +26,9 @@ SECRET_KEY = 'django-insecure-$b#(mc5p---yk8=%u67i^5l8dv8n=gzj@f&vfu!2p^=6o+7k)^
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['34.134.112.46']
+ALLOWED_HOSTS = ['34.134.112.46',
+                 'api.spacetink.com',
+                ]
 
 
 # Application definition
@@ -43,7 +45,12 @@ INSTALLED_APPS = [
 
 ]
 
+RATELIMIT_ENABLE = True
+RATELIMIT_VIEW = "myapp.views.ratelimited"
+
+
 MIDDLEWARE = [
+    'ratelimit.middleware.RatelimitMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
@@ -137,3 +144,14 @@ TEMPLATE_DIRS = (
 )
 
 CORS_ALLOW_ALL_ORIGINS: True
+
+SECURE_CONTENT_TYPE_NOSNIFF = False
+SECURE_BROWSER_XSS_FILTER = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
+SECURE_SSL_REDIRECT = False
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+
+
+#SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

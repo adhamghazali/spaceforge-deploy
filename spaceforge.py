@@ -134,8 +134,10 @@ class Space:
        
         
     def create_variation(self,vx,vy):
+        
         vx=1.0+vx   
         self.varied_latents=torch.exp((self.stored_latents*vx))+vy
+
         self.varied_latents=torch.log(self.varied_latents)
         std,mean=torch.std_mean(self.varied_latents)
         self.varied_latents=(self.varied_latents-mean)/std    
